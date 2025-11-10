@@ -8,18 +8,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const playerContainer = document.getElementById('player-container'); 
 
     // ==========================================================
-    // 2. VIDEO URL SETTINGS (Direct M3U8 Link for Testing)
+    // 2. VIDEO URL SETTINGS (Worker Call)
     // ==========================================================
     
-    // Test karne ke liye, hum seedha HLS stream ka URL istemaal kar rahe hain.
-    // Jab aapke paas Dailymotion ka working M3U8 link ho, toh aap yahan daal sakte hain.
-    const hlsUrl = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'; 
+    // Aapke Cloudflare Worker ka URL
+    const workerBaseUrl = 'https://video-proxy.ia297945.workers.dev'; 
+    
+    // ⚠️ Yahan aap woh Dailymotion URL den jise aap play karna chahte hain
+    const originalUrl = 'https://www.dailymotion.com/video/k6DKKtEiwhK7s6E8NRO'; 
+    
+    // Worker ko call karne wala final URL
+    const hlsUrl = `${workerBaseUrl}/?videoUrl=${encodeURIComponent(originalUrl)}`;
 
     // ==========================================================
     
     // 3. HLS Player ko initialize karna
     if (Hls.isSupported()) {
-        console.log("HLS supported. Initializing player with direct URL:", hlsUrl);
+        console.log("HLS supported. Initializing player with worker URL:", hlsUrl);
         var hls = new Hls({ enableWorker: true });
         
         hls.loadSource(hlsUrl); 
@@ -28,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
         hls.on(Hls.Events.MANIFEST_PARSED, function() {
             seekBar.max = video.duration;
             updateTimeDisplay();
-            // Video ko chalaane ki koshish karein
             video.play().catch(e => console.log("Autoplay blocked:", e)); 
         });
         
@@ -47,9 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 4. Custom Controls ka logic (Sahi syntax ke saath)
-
-    // Play/Pause button
+    // 4. Custom Controls ka logic (Same as before)
     playPauseBtn.addEventListener('click', () => {
         if (video.paused || video.ended) {
             video.play();
@@ -60,7 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Time update aur Seek Bar sync
     video.addEventListener('timeupdate', () => {
         if (document.activeElement !== seekBar) {
             seekBar.value = video.currentTime;
@@ -68,13 +69,11 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTimeDisplay();
     });
 
-    // Seeking
     seekBar.addEventListener('input', () => {
         video.currentTime = seekBar.value;
         updateTimeDisplay();
     });
 
-    // Fullscreen button
     fullscreenBtn.addEventListener('click', () => {
         if (playerContainer.requestFullscreen) {
             playerContainer.requestFullscreen();
@@ -85,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Time format function (Syntax error yahan fix kiya gaya hai)
     function formatTime(seconds) {
         const h = Math.floor(seconds / 3600);
         const m = Math.floor((seconds % 3600) / 60);
@@ -94,14 +92,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const parts = [];
         if (h > 0) parts.push(h);
         
-        // Conditional zero padding for minutes and seconds
         parts.push((h > 0 && m < 10) ? "0" + m : m);
         parts.push(s < 10 ? "0" + s : s);
         
         return parts.join(':');
     }
 
-    // Time display update function
     function updateTimeDisplay() {
         const current = formatTime(video.currentTime);
         const duration = formatTime(video.duration || 0);
