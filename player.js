@@ -1,106 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. HTML Elements ko uthana
-    const video = document.getElementById('my-video');
-    const playPauseBtn = document.getElementById('play-pause-btn');
-    const seekBar = document.getElementById('seek-bar');
-    const timeDisplay = document.getElementById('time-display');
-    const fullscreenBtn = document.getElementById('fullscreen-btn');
-    const playerContainer = document.getElementById('player-container'); 
-
-    // ==========================================================
-    // 2. VIDEO URL SETTINGS (Worker Call)
-    // ==========================================================
+    const iframe = document.getElementById('dm-iframe');
     
-    // Aapke Cloudflare Worker ka URL
-    const workerBaseUrl = 'https://video-proxy.ia297945.workers.dev'; 
+    // 🛑 Zaroori: Apni Dailymotion video ID yahan daalen
+    const VIDEO_ID = 'k6DKKtEiwhK7s6E8NRO'; // Agar yehi ID hai to theek hai, warna badal den
     
-    // ⚠️ Yahan aap woh Dailymotion URL den jise aap play karna chahte hain
-    const originalUrl = 'https://www.dailymotion.com/video/k6DKKtEiwhK7s6E8NRO'; 
-    
-    // Worker ko call karne wala final URL
-    const hlsUrl = `${workerBaseUrl}/?videoUrl=${encodeURIComponent(originalUrl)}`;
+    // Default password (khali chhod dein taake user khud likhe)
+    const DEFAULT_PASSWORD = ''; 
 
-    // ==========================================================
-    
-    // 3. HLS Player ko initialize karna
-    if (Hls.isSupported()) {
-        console.log("HLS supported. Initializing player with worker URL:", hlsUrl);
-        var hls = new Hls({ enableWorker: true });
+    // Browser prompt box ke zariye password maangna
+    let password = prompt("Yeh video password protected hai. Kripya video ka password darj karein:", DEFAULT_PASSWORD);
+
+    if (password) {
+        // Dailymotion embed URL banaana, jismein password shamil ho
+        const embedUrl = `https://www.dailymotion.com/embed/video/${VIDEO_ID}?queue-autoplay-next=false&autoplay=1&password=${encodeURIComponent(password)}`;
         
-        hls.loadSource(hlsUrl); 
-        hls.attachMedia(video);
-        
-        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            seekBar.max = video.duration;
-            updateTimeDisplay();
-            video.play().catch(e => console.log("Autoplay blocked:", e)); 
-        });
-        
-        hls.on(Hls.Events.ERROR, function(event, data) {
-             console.error('HLS Error:', data);
-             playPauseBtn.textContent = 'Error!'; 
-        });
+        console.log("Loading Dailymotion Embed with Password:", embedUrl);
+        iframe.src = embedUrl;
 
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native HLS support (Safari ke liye)
-        console.log("Using native HLS support.");
-        video.src = hlsUrl;
-        video.addEventListener('loadedmetadata', function() {
-            seekBar.max = video.duration;
-            updateTimeDisplay();
-        });
-    }
-
-    // 4. Custom Controls ka logic (Same as before)
-    playPauseBtn.addEventListener('click', () => {
-        if (video.paused || video.ended) {
-            video.play();
-            playPauseBtn.textContent = 'Pause';
-        } else {
-            video.pause();
-            playPauseBtn.textContent = 'Play';
-        }
-    });
-
-    video.addEventListener('timeupdate', () => {
-        if (document.activeElement !== seekBar) {
-            seekBar.value = video.currentTime;
-        }
-        updateTimeDisplay();
-    });
-
-    seekBar.addEventListener('input', () => {
-        video.currentTime = seekBar.value;
-        updateTimeDisplay();
-    });
-
-    fullscreenBtn.addEventListener('click', () => {
-        if (playerContainer.requestFullscreen) {
-            playerContainer.requestFullscreen();
-        } else if (playerContainer.webkitRequestFullscreen) {
-            playerContainer.webkitRequestFullscreen();
-        } else if (playerContainer.msRequestFullscreen) {
-            playerContainer.msRequestFullscreen();
-        }
-    });
-    
-    function formatTime(seconds) {
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        const s = Math.floor(seconds % 60);
-        
-        const parts = [];
-        if (h > 0) parts.push(h);
-        
-        parts.push((h > 0 && m < 10) ? "0" + m : m);
-        parts.push(s < 10 ? "0" + s : s);
-        
-        return parts.join(':');
-    }
-
-    function updateTimeDisplay() {
-        const current = formatTime(video.currentTime);
-        const duration = formatTime(video.duration || 0);
-        timeDisplay.textContent = `${current} / ${duration}`;
+    } else {
+        // Agar user ne password na diya
+        alert("Video play karne ke liye password zaroori hai.");
     }
 });
