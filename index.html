@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Custom Unbranded HLS Player</title>
+    <title>Custom Dailymotion Player</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        /* Player ka size aur look set karein */
         #player-container {
-            width: 80%;
+            width: 90%;
+            max-width: 960px;
             margin: 50px auto;
-            border: 1px solid #333;
+            background: #000;
             position: relative;
         }
         #my-video {
             width: 100%;
+            height: auto;
             display: block;
         }
         #custom-controls {
@@ -29,16 +31,20 @@
             border: none;
             color: white;
         }
+        #seek-bar {
+            flex-grow: 1; 
+            margin: 0 15px;
+        }
     </style>
 </head>
 <body>
 
 <div id="player-container">
-    <video id="my-video"></video>
+    <video id="my-video" preload="auto"></video>
 
     <div id="custom-controls">
         <button id="play-pause-btn">Play</button>
-        <input type="range" id="seek-bar" value="0" min="0" max="100" style="flex-grow: 1; margin: 0 15px;">
+        <input type="range" id="seek-bar" value="0" min="0" max="100">
         <span id="time-display">0:00 / 0:00</span>
         <button id="fullscreen-btn" style="margin-left: 15px;">FS</button>
     </div>
