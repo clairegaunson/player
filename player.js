@@ -1,55 +1,46 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Zaroori HTML Elements ko uthana (Fetch required HTML elements)
+    // 1. HTML Elements
     const video = document.getElementById('my-video');
     const playPauseBtn = document.getElementById('play-pause-btn');
     const seekBar = document.getElementById('seek-bar');
     const timeDisplay = document.getElementById('time-display');
     const fullscreenBtn = document.getElementById('fullscreen-btn');
-    const playerContainer = document.getElementById('player-container'); // Fullscreen ke liye
+    const playerContainer = document.getElementById('player-container');
 
     // ==========================================================
-    // 2. CONFIGURATION (Isey zaroor check karein)
+    // 2. VIDEO URL SETTINGS (WITHOUT WORKER / DIRECT M3U8 LINK)
     // ==========================================================
     
-    // Aapka Deployed Cloudflare Worker URL
-    // (Aapke case mein yeh URL sahi hona chahiye)
-    const workerBaseUrl = 'https://video-proxy.ia297945.workers.dev'; 
+    // 🛑 Humne Worker URL ko ignore kar diya hai.
+    // Iski jagah, hum seedha ek working HLS stream daal rahe hain.
+    // Yeh link 100% public hai aur chalna chahiye.
+    const hlsUrl = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'; 
 
-    // ⚠️ Yahan aap woh URL den jise aap play karna chahte hain (Dailymotion ya koi aur)
-    const originalUrl = 'https://www.dailymotion.com/video/k6DKKtEiwhK7s6E8NRO'; 
-    
-    // Worker ko call karne wala final URL
-    // Yeh URL Dailymotion URL ko 'videoUrl' parameter mein daal kar Worker ke paas bhejta hai.
-    const hlsUrl = `${workerBaseUrl}/?videoUrl=${encodeURIComponent(originalUrl)}`;
+    // Note: Agar aap koi aur Dailymotion link chalana chahen, 
+    // toh pehle uska M3U8 link kisi aur tool se nikaal kar yahan daalna hoga.
 
     // ==========================================================
     
-    // 3. HLS Player ko initialize karna (Initialize the HLS Player)
+    // 3. HLS Player ko initialize karna
     if (Hls.isSupported()) {
-        console.log("HLS supported. Initializing player with worker URL:", hlsUrl);
-        var hls = new Hls({
-            // Worker ko use karne se performance behtar hogi
-            enableWorker: true 
-        });
+        console.log("HLS supported. Initializing player with direct URL:", hlsUrl);
+        var hls = new Hls({ enableWorker: true });
         
-        // Worker URL ko HLS library ko dena
         hls.loadSource(hlsUrl); 
         hls.attachMedia(video);
         
         hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            // Manifest load hone ke baad, seekbar ki max value set karna
             seekBar.max = video.duration;
             updateTimeDisplay();
         });
         
         hls.on(Hls.Events.ERROR, function(event, data) {
              console.error('HLS Error:', data);
-             // Agar error ho toh user ko bata sakte hain
              playPauseBtn.textContent = 'Error!'; 
         });
 
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Native HLS support (mostly Safari)
+        // Native HLS support
         console.log("Using native HLS support.");
         video.src = hlsUrl;
         video.addEventListener('loadedmetadata', function() {
@@ -58,9 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 4. Custom Controls ka logic (Handle Custom Controls)
+    // 4. Custom Controls ka logic
 
-    // Play/Pause button
     playPauseBtn.addEventListener('click', () => {
         if (video.paused || video.ended) {
             video.play();
@@ -71,48 +61,41 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Time update aur Seek Bar sync
     video.addEventListener('timeupdate', () => {
-        // Agar user seekbar drag nahi kar raha, toh video time ko sync karein
         if (document.activeElement !== seekBar) {
             seekBar.value = video.currentTime;
         }
         updateTimeDisplay();
     });
 
-    // Seeking (Jab user seekbar move kare)
     seekBar.addEventListener('input', () => {
         video.currentTime = seekBar.value;
         updateTimeDisplay();
     });
 
-    // Fullscreen button
     fullscreenBtn.addEventListener('click', () => {
         if (playerContainer.requestFullscreen) {
             playerContainer.requestFullscreen();
-        } else if (playerContainer.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+        } else if (playerContainer.webkitRequestFullscreen) {
             playerContainer.webkitRequestFullscreen();
-        } else if (playerContainer.msRequestFullscreen) { /* IE/Edge */
+        } else if (playerContainer.msRequestFullscreen) {
             playerContainer.msRequestFullscreen();
         }
     });
     
-    // Time format function
     function formatTime(seconds) {
-        // Time ko HH:MM:SS ya MM:SS format mein dikhana
         const h = Math.floor(seconds / 3600);
         const m = Math.floor((seconds % 3600) / 60);
         const s = Math.floor(seconds % 60);
         
         const parts = [];
         if (h > 0) parts.push(h);
-        parts.push(m < 10 && h > 0 ? "0" + m : m);
+        parts.push(m < 10 && h > 0 ? "0" + m : m : m);
         parts.push(s < 10 ? "0" + s : s);
         
         return parts.join(':');
     }
 
-    // Time display update function
     function updateTimeDisplay() {
         const current = formatTime(video.currentTime);
         const duration = formatTime(video.duration || 0);
