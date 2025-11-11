@@ -1,26 +1,106 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const iframe = document.getElementById('dm-iframe');
+    // 1. HTML Elements ko uthana
+    const video = document.getElementById('my-video');
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const seekBar = document.getElementById('seek-bar');
+    const timeDisplay = document.getElementById('time-display');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const playerContainer = document.getElementById('player-container'); 
+
+    // ==========================================================
+    // 2. REMOTE VIDEO URL SETTINGS (Worker Call)
+    // ==========================================================
     
-    // 🛑 Zaroori: Apni Dailymotion video ID yahan daalen
-    const VIDEO_ID = 'k6DKKtEiwhK7s6E8NRO'; 
+    // Aapke Cloudflare Worker ka URL
+    const workerBaseUrl = 'https://video-proxy.ia297945.workers.dev'; 
     
-    // 🔑 Yahan APNA ASLI PASSWORD daalen, jo aapne Dailymotion par set kiya hai
-    const VIDEO_PASSWORD = 'YOUR_SECRET_VIDEO_PASSWORD'; // <--- **ISE BADALEN**
+    // ⚠️ Yahan apni Dailymotion video ka URL dalen
+    const originalUrl = 'https://www.dailymotion.com/video/k6DKKtEiwhK7s6E8NRO'; 
     
-    // Safety check
-    if (!iframe) {
-        console.error("Fatal Error: Iframe element with ID 'dm-iframe' not found.");
-        return; 
+    // Worker ko call karne wala final URL
+    const hlsUrl = `${workerBaseUrl}/?videoUrl=${encodeURIComponent(originalUrl)}`;
+
+    // ==========================================================
+    
+    // 3. HLS Player ko initialize karna
+    if (Hls.isSupported()) {
+        console.log("HLS supported. Initializing player with worker URL:", hlsUrl);
+        var hls = new Hls({ enableWorker: true });
+        
+        hls.loadSource(hlsUrl); 
+        hls.attachMedia(video);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+            seekBar.max = video.duration;
+            updateTimeDisplay();
+            video.play().catch(e => console.log("Autoplay blocked:", e)); 
+        });
+        
+        hls.on(Hls.Events.ERROR, function(event, data) {
+             console.error('HLS Error:', data);
+             playPauseBtn.textContent = 'Error!'; 
+        });
+
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS support
+        console.log("Using native HLS support.");
+        video.src = hlsUrl;
+        video.addEventListener('loadedmetadata', function() {
+            seekBar.max = video.duration;
+            updateTimeDisplay();
+        });
     }
 
-    if (VIDEO_PASSWORD === 'Kitaunsa786!2020' || !VIDEO_PASSWORD) {
-        alert("Configuration Error: Please update the VIDEO_PASSWORD in player.js with your actual password.");
-        return;
+    // 4. Custom Controls ka logic (Same as before)
+    playPauseBtn.addEventListener('click', () => {
+        if (video.paused || video.ended) {
+            video.play();
+            playPauseBtn.textContent = 'Pause';
+        } else {
+            video.pause();
+            playPauseBtn.textContent = 'Play';
+        }
+    });
+
+    video.addEventListener('timeupdate', () => {
+        if (document.activeElement !== seekBar) {
+            seekBar.value = video.currentTime;
+        }
+        updateTimeDisplay();
+    });
+
+    seekBar.addEventListener('input', () => {
+        video.currentTime = seekBar.value;
+        updateTimeDisplay();
+    });
+
+    fullscreenBtn.addEventListener('click', () => {
+        if (playerContainer.requestFullscreen) {
+            playerContainer.requestFullscreen();
+        } else if (playerContainer.webkitRequestFullscreen) {
+            playerContainer.webkitRequestFullscreen();
+        } else if (playerContainer.msRequestFullscreen) {
+            playerContainer.msRequestFullscreen();
+        }
+    });
+    
+    function formatTime(seconds) {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = Math.floor(seconds % 60);
+        
+        const parts = [];
+        if (h > 0) parts.push(h);
+        
+        parts.push((h > 0 && m < 10) ? "0" + m : m);
+        parts.push(s < 10 ? "0" + s : s);
+        
+        return parts.join(':');
     }
 
-    // Embed URL banaana, jismein password shamil ho
-    const embedUrl = `https://www.dailymotion.com/embed/video/${VIDEO_ID}?queue-autoplay-next=false&autoplay=1&password=${encodeURIComponent(VIDEO_PASSWORD)}`;
-    
-    console.log("Loading Dailymotion Embed Player with Hardcoded Password.");
-    iframe.src = embedUrl;
+    function updateTimeDisplay() {
+        const current = formatTime(video.currentTime);
+        const duration = formatTime(video.duration || 0);
+        timeDisplay.textContent = `${current} / ${duration}`;
+    }
 });
